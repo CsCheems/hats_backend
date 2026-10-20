@@ -100,6 +100,72 @@ class ApiError extends Error {
     return new ApiError({ status: 409, code: 'out_of_stock', message: 'Este artículo está agotado.' })
   }
 
+  // Comprar con la bolsa vacía (o con todo lo que había ya sin existencias). 409
+  // por lo mismo que outOfStock: la petición está bien, el estado no.
+  static cartEmpty() {
+    return new ApiError({
+      status: 409,
+      code: 'cart_empty',
+      message: 'Tu bolsa está vacía. Añade un sombrero para poder pagar.',
+    })
+  }
+
+  // Un artículo de la bolsa ya no tiene las piezas que se pidieron. Dice cuál,
+  // porque la persona tiene que ir a cambiarlo.
+  static insufficientStock(titulo) {
+    return new ApiError({
+      status: 409,
+      code: 'insufficient_stock',
+      message: titulo
+        ? `Ya no quedan suficientes piezas de «${titulo}». Revisa tu bolsa.`
+        : 'Algún artículo de tu bolsa ya no tiene suficientes piezas. Revisa tu bolsa.',
+    })
+  }
+
+  // El precio o el envío cambiaron entre el resumen y el pago. Nunca se cobra una
+  // cifra que la persona no vio.
+  static totalChanged() {
+    return new ApiError({
+      status: 409,
+      code: 'total_changed',
+      message: 'El total cambió mientras comprabas. Revísalo en la bolsa antes de pagar.',
+    })
+  }
+
+  // El pedido ya no puede pasar a ese estado (enviar uno cancelado, cancelar uno
+  // enviado…). 409: la petición está bien escrita, el estado del pedido es lo que
+  // no la deja pasar.
+  static invalidTransition() {
+    return new ApiError({
+      status: 409,
+      code: 'invalid_transition',
+      message: 'Este pedido ya no puede pasar a ese estado.',
+      field: 'estado',
+    })
+  }
+
+  // Quien compró intenta cancelar un pedido que ya salió de la tienda. Lo mismo
+  // que invalidTransition, dicho para quien compra y sin `field`: no hay ningún
+  // campo de ningún formulario que corregir.
+  static cannotCancel() {
+    return new ApiError({
+      status: 409,
+      code: 'cannot_cancel',
+      message: 'Este pedido ya no se puede cancelar: solo se cancela antes de enviarse.',
+    })
+  }
+
+  // La pasarela rechazó el cobro. 402, que es justo para esto; con `field` para
+  // que el formulario ponga el mensaje bajo el número de tarjeta.
+  static paymentDeclined(message) {
+    return new ApiError({
+      status: 402,
+      code: 'payment_declined',
+      message: message ?? 'No pudimos cobrar la tarjeta. Prueba con otra.',
+      field: 'tarjetaNumero',
+    })
+  }
+
   // Borrar algo que todavía se usa: una marca o una categoría con artículos. 409
   // y no 400, porque no hay nada mal escrito; sin `field` por lo mismo. El
   // mensaje dice qué lo está usando.

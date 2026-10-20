@@ -76,6 +76,19 @@ const MESSAGES = {
   calificacion: 'Elige de 1 a 5 estrellas',
   resenaLarga: 'La reseña admite hasta 1000 caracteres',
 
+  // Compra (db/scripts/15). Los de formato tienen copia literal en
+  // `checkoutMessages` de frontend/src/data/checkout.js. `tarjeta` y `total` los
+  // dice también la pasarela: el token y la cifra son de la máquina, no de un
+  // campo que la persona escriba.
+  destinatarioLargo: 'El nombre admite hasta 120 caracteres',
+  referenciasLargas: 'Las referencias admiten hasta 200 caracteres',
+  tarjeta: 'Revisa los datos de la tarjeta',
+  total: 'No pudimos confirmar el total. Vuelve a la bolsa e inténtalo de nuevo',
+
+  // Estado de un pedido, desde el panel. Solo se puede pedir uno de los tres a los
+  // que se llega; qué transición vale depende del pedido y la dice la base.
+  estadoPedido: 'Elige enviado, entregado o cancelado',
+
   // Marcas y categorías del panel. Los tres de formato tienen copia literal en
   // `catalogMessages` de frontend/src/data/admin.js; el resto depende de lo que
   // ya hay en la base y solo puede salir de aquí.
@@ -112,6 +125,12 @@ const CANTIDAD = /^\d{1,2}$/
 const CALIFICACION = /^[1-5]$/
 const MAX_RESENA = 1000
 
+// Compra. Los topes son los check de `pedidos` en db/scripts/15. `MONTO` es el
+// total que la persona vio: pesos con hasta dos decimales, y cero no es un total.
+const MAX_DESTINATARIO = 120
+const MAX_REFERENCIAS = 200
+const MONTO = /^\d{1,8}(\.\d{1,2})?$/
+
 // Marcas y categorías: el tope de nombre y el formato del prefijo son los check
 // de db/scripts/06 y 11. El prefijo admite minúsculas aquí; el servicio lo pasa
 // a mayúsculas antes de escribirlo.
@@ -145,6 +164,10 @@ const FORMAT = {
   cantidadFijar: (value) => (CANTIDAD.test(value) && Number(value) <= MAX_CANTIDAD ? null : MESSAGES.cantidadFijar),
   calificacion: (value) => (CALIFICACION.test(value) ? null : MESSAGES.calificacion),
   resena: (value) => (value.length <= MAX_RESENA ? null : MESSAGES.resenaLarga),
+  destinatario: (value) => (value.length <= MAX_DESTINATARIO ? null : MESSAGES.destinatarioLargo),
+  referencias: (value) => (value.length <= MAX_REFERENCIAS ? null : MESSAGES.referenciasLargas),
+  monto: (value) => (MONTO.test(value) && Number(value) > 0 ? null : MESSAGES.total),
+  estadoPedido: (value) => (['enviado', 'entregado', 'cancelado'].includes(value) ? null : MESSAGES.estadoPedido),
   nombreCatalogo: (value) => (value.length <= MAX_NOMBRE_CATALOGO ? null : MESSAGES.nombreLargo),
   prefijo: (value) => (PREFIJO.test(value) ? null : MESSAGES.prefijo),
   // La única que no recibe un texto: recibe la lista ya limpia de un campo

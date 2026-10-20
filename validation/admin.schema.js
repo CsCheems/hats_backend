@@ -48,4 +48,10 @@ const categorySchema = {
   ],
 }
 
-module.exports = { productSchema, brandSchema, categorySchema }
+// Cambiar el estado de un pedido: solo se pide el nuevo. A cuáles se puede llegar
+// desde el actual lo decide la base.
+const orderStateSchema = {
+  fields: [{ name: 'estado', format: 'estadoPedido' }],
+}
+
+module.exports = { productSchema, brandSchema, categorySchema, orderStateSchema }

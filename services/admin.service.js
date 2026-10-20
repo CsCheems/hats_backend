@@ -1,6 +1,9 @@
-const { pedidos, periodoAnterior } = require('../mock/pedidos')
 const catalog = require('./catalog.store')
+const gateway = require('./payments.gateway')
+const pedidos = require('./pedidos.store')
 const ApiError = require('../utils/ApiError')
+const { parseFolio } = require('../utils/folio')
+const { guard } = require('../utils/shopErrors')
 const { MESSAGES } = require('../validation/rules')
 
 // Lo que el panel enseña. Igual que auth.service: no conoce req ni res, no elige
@@ -12,12 +15,9 @@ const { MESSAGES } = require('../validation/rules')
 //
 // LA REGLA DE ESTE ARCHIVO: las cifras se derivan, no se escriben. El número de
 // productos es la longitud del inventario y el ingreso es la suma de los
-// pedidos, así que un artículo nuevo o una fila más en el mock mueven el
-// resumen solos. Lo único escrito a mano es el periodo anterior, que no tiene
-// filas de las que salir, y por eso vive apartado en su propio objeto.
-//
-// Los pedidos siguen siendo de maqueta (mock/pedidos.js): son lo siguiente que
-// se muda a la base.
+// pedidos, así que un artículo nuevo o un pedido más mueven el resumen solos. Ni
+// siquiera el periodo anterior está escrito: son los pedidos de los treinta días
+// previos a los últimos treinta, que están en la misma base.
 
 // Cuánto es «poco» stock. Es una regla de negocio, así que vive en el servicio y
 // no en el almacén — el almacén solo sabe filtrar por un número que le den.
@@ -26,12 +26,20 @@ const LIMITE_STOCK = 5
 // Cuántos pedidos caben en el resumen sin dejar de ser un resumen.
 const PEDIDOS_RECIENTES = 5
 
+// El periodo del resumen son los últimos treinta días, y se compara con los
+// treinta anteriores. Se piden de una vez los sesenta.
+const DIA = 24 * 60 * 60 * 1000
+const PERIODO_DIAS = 30
+
 // Un pedido cancelado sigue siendo un pedido —se hizo, se registró y hay que
 // contarlo—, pero no es una venta ni un ingreso. Confundirlo infla las dos
 // cifras que de verdad importan.
-const facturables = pedidos.filter((pedido) => pedido.estado !== 'cancelado')
+const facturables = (filas) => filas.filter((pedido) => pedido.estado !== 'cancelado')
 
 const suma = (filas, campo) => filas.reduce((total, fila) => total + fila[campo], 0)
+
+// Los totales traen centavos: se redondea al sumar para no arrastrar 0.1 + 0.2.
+const aPesos = (valor) => Math.round(valor * 100) / 100
 
 /**
  * Variación porcentual con un decimal. Devuelve null cuando no hay con qué
@@ -45,13 +53,20 @@ function variacion(actual, anterior) {
 }
 
 async function summary(accessToken) {
-  const [productos, stockBajo] = await Promise.all([
+  const ahora = Date.now()
+  const inicio = ahora - PERIODO_DIAS * DIA
+
+  const [productos, stockBajo, recientes] = await Promise.all([
     catalog.list(accessToken),
     catalog.lowStock(accessToken, LIMITE_STOCK),
+    guard(pedidos.adminList(accessToken, new Date(ahora - 2 * PERIODO_DIAS * DIA))),
   ])
 
-  const ventas = suma(facturables, 'articulos')
-  const ingresos = suma(facturables, 'total')
+  const actuales = recientes.filter((pedido) => new Date(pedido.pagado).getTime() >= inicio)
+  const anteriores = recientes.filter((pedido) => new Date(pedido.pagado).getTime() < inicio)
+
+  const ventas = suma(facturables(actuales), 'articulos')
+  const ingresos = aPesos(suma(facturables(actuales), 'total'))
 
   return {
     periodo: 'Últimos 30 días',
@@ -60,16 +75,15 @@ async function summary(accessToken) {
       // acumulado del periodo, y no hay un «cuántos productos había el mes
       // pasado» que no nos estuviéramos inventando.
       productos: { valor: productos.length, variacion: null },
-      pedidos: { valor: pedidos.length, variacion: variacion(pedidos.length, periodoAnterior.pedidos) },
-      ventas: { valor: ventas, variacion: variacion(ventas, periodoAnterior.ventas) },
-      ingresos: { valor: ingresos, variacion: variacion(ingresos, periodoAnterior.ingresos) },
+      pedidos: { valor: actuales.length, variacion: variacion(actuales.length, anteriores.length) },
+      ventas: { valor: ventas, variacion: variacion(ventas, suma(facturables(anteriores), 'articulos')) },
+      ingresos: {
+        valor: ingresos,
+        variacion: variacion(ingresos, aPesos(suma(facturables(anteriores), 'total'))),
+      },
     },
-    // Ya vienen del más reciente al más antiguo en el mock, pero se ordena aquí
-    // igual: el orden de una lista es cosa de quien la sirve, y confiar en el
-    // que traiga el archivo es confiar en que nadie inserte una fila en medio.
-    pedidosRecientes: [...pedidos]
-      .sort((a, b) => b.fecha.localeCompare(a.fecha))
-      .slice(0, PEDIDOS_RECIENTES),
+    // La base ya los entrega del más reciente al más antiguo.
+    pedidosRecientes: actuales.slice(0, PEDIDOS_RECIENTES),
     stockBajo: { limite: LIMITE_STOCK, items: stockBajo },
   }
 }
@@ -528,8 +542,52 @@ async function deleteCategory(accessToken, slug) {
   await escribirCatalogo(() => catalog.deleteCategory(accessToken, slug))
 }
 
+// ─── Pedidos ───────────────────────────────────────────────────────────────
+
+/** Todos los pedidos pagados, el más reciente primero. */
+async function orders(accessToken) {
+  return guard(pedidos.adminList(accessToken, null))
+}
+
+/** Un pedido por folio, con quién lo compró. Inexistente o sin pagar: 404. */
+async function order(accessToken, folio) {
+  const id = parseFolio(folio)
+
+  if (!id) throw ApiError.notFound()
+
+  const pedido = await guard(pedidos.adminFind(accessToken, id))
+
+  if (!pedido) throw ApiError.notFound()
+
+  return pedido
+}
+
+/**
+ * Cambia el estado de un pedido y devuelve el pedido como quedó. La base decide
+ * qué transiciones valen (db/scripts/16). Si se cancela, además se pide el
+ * reembolso a la pasarela: el stock ya volvió en la misma transacción, y si la
+ * devolución falla se avisa en consola, porque el pedido ya está cancelado y
+ * habrá que devolver el dinero a mano.
+ */
+async function setOrderState(accessToken, folio, { estado }) {
+  const antes = await order(accessToken, folio)
+
+  await guard(pedidos.adminSetState(accessToken, parseFolio(folio), estado))
+
+  if (estado === 'cancelado' && antes.pago?.referencia) {
+    await gateway
+      .refund({ referencia: antes.pago.referencia })
+      .catch((fallo) => console.error('No se pudo devolver el cobro', antes.pago.referencia, fallo))
+  }
+
+  return order(accessToken, folio)
+}
+
 module.exports = {
   summary,
+  orders,
+  order,
+  setOrderState,
   categories,
   products,
   catalogos,

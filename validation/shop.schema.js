@@ -23,4 +23,28 @@ const reviewSchema = {
   ],
 }
 
-module.exports = { addToCartSchema, setCartSchema, reviewSchema }
+// Pagar: contacto y dirección de envío (en el orden de la pantalla, que es el del
+// alta), si se guarda la dirección, el total que la persona vio y el token de la
+// tarjeta. `referencias` es opcional; `guardar` es un booleano JSON, no un texto.
+//
+// El total viaja como texto, como los precios: el servidor lo compara con el que
+// él calcula y se niega a cobrar si no coinciden. Del token solo se exige que
+// venga; qué forma tiene lo decide la pasarela.
+const checkoutSchema = {
+  fields: [
+    { name: 'destinatario', format: 'destinatario' },
+    { name: 'telefono', format: 'telefono' },
+    { name: 'pais' },
+    { name: 'estado' },
+    { name: 'codigoPostal', format: 'codigoPostal' },
+    { name: 'colonia' },
+    { name: 'calle' },
+    { name: 'numero' },
+    { name: 'referencias', format: 'referencias', optional: true },
+    { name: 'guardar', type: 'boolean' },
+    { name: 'total', format: 'monto' },
+    { name: 'token', trim: false },
+  ],
+}
+
+module.exports = { addToCartSchema, setCartSchema, reviewSchema, checkoutSchema }

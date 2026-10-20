@@ -2,8 +2,10 @@ const { Router } = require('express')
 const adminRoutes = require('./admin.routes')
 const authRoutes = require('./auth.routes')
 const carritoRoutes = require('./carrito.routes')
+const direccionesRoutes = require('./direcciones.routes')
 const favoritosRoutes = require('./favoritos.routes')
 const marcasRoutes = require('./marcas.routes')
+const pedidosRoutes = require('./pedidos.routes')
 const productsRoutes = require('./products.routes')
 const resenasRoutes = require('./resenas.routes')
 const ubicacionesRoutes = require('./ubicaciones.routes')
@@ -59,5 +61,10 @@ router.use('/marcas', marcasRoutes)
 router.use('/favoritos', favoritosRoutes)
 router.use('/carrito', carritoRoutes)
 router.use('/resenas', resenasRoutes)
+
+// La compra: el resumen de la bolsa con IVA, pagar y leer un pedido propio, más
+// las direcciones guardadas para elegir adónde se envía. Mismo criterio.
+router.use('/pedidos', pedidosRoutes)
+router.use('/direcciones', direccionesRoutes)
 
 module.exports = router

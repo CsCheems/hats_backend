@@ -2,7 +2,7 @@ const { isAuthSessionMissingError } = require('@supabase/supabase-js')
 const ApiError = require('../utils/ApiError')
 const { MESSAGES } = require('../validation/rules')
 const { authClient, publicClient } = require('./supabase.client')
-const ubicaciones = require('./ubicaciones.store')
+const { resolveEstado } = require('./ubicaciones.service')
 const store = require('./users.store')
 
 // Las reglas de acceso, sobre Supabase Auth.
@@ -53,17 +53,6 @@ async function login({ email, password }) {
   const identity = toIdentity(data.user)
 
   return { user: await me(session.accessToken, identity), session }
-}
-
-// El país y el estado escritos a mano, traducidos a un id del catálogo o a un
-// error bajo el campo que está mal. Lo comparten el alta y la edición.
-async function resolveEstado({ pais, estado }) {
-  const { paisValido, estadoId } = await ubicaciones.findEstadoId(pais, estado)
-
-  if (!paisValido) throw ApiError.invalidField('pais', MESSAGES.pais)
-  if (!estadoId) throw ApiError.invalidField('estado', MESSAGES.estado)
-
-  return estadoId
 }
 
 async function register(values) {

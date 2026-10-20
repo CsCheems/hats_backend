@@ -19,6 +19,18 @@ async function summary(req, res) {
   res.status(200).json(await adminService.summary(token(req)))
 }
 
+async function orders(req, res) {
+  res.status(200).json(await adminService.orders(token(req)))
+}
+
+async function order(req, res) {
+  res.status(200).json(await adminService.order(token(req), req.params.folio))
+}
+
+async function setOrderState(req, res) {
+  res.status(200).json(await adminService.setOrderState(token(req), req.params.folio, req.validated))
+}
+
 async function categories(req, res) {
   res.status(200).json(await adminService.categories(token(req)))
 }
@@ -110,6 +122,9 @@ async function deleteCategory(req, res) {
 
 module.exports = {
   summary,
+  orders,
+  order,
+  setOrderState,
   categories,
   catalogos,
   products,

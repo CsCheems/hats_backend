@@ -104,4 +104,69 @@ async function updateProfile(accessToken, values) {
   if (error) throw error
 }
 
-module.exports = { findProfile, updateProfile, toPublicUser, normalizeEmail }
+/**
+ * Todas las direcciones de `userId`, la predeterminada primero y luego la más
+ * nueva. Con el JWT de la persona: RLS ya limita a las suyas, el `eq` es para
+ * que un admin no reciba las de todo el mundo. Forma de API, con los nombres del
+ * estado y del país.
+ */
+async function listAddresses(accessToken, userId) {
+  const { data, error } = await userClient(accessToken)
+    .from('direcciones')
+    .select('id, codigo_postal, colonia, calle, numero, predeterminada, estados ( nombre, paises ( nombre ) )')
+    .eq('usuario_id', userId)
+    .order('predeterminada', { ascending: false })
+    .order('creado_en', { ascending: false })
+
+  if (error) throw error
+
+  return data.map((fila) => ({
+    id: fila.id,
+    pais: fila.estados.paises.nombre,
+    estado: fila.estados.nombre,
+    codigoPostal: fila.codigo_postal,
+    colonia: fila.colonia,
+    calle: fila.calle,
+    numero: fila.numero,
+    predeterminada: fila.predeterminada,
+  }))
+}
+
+// Dos direcciones son la misma si coinciden estado, código postal y —sin importar
+// mayúsculas ni espacios de sobra— colonia, calle y número.
+const mismaDireccion = (a, b) =>
+  ['colonia', 'calle', 'numero'].every((campo) => a[campo].trim().toLowerCase() === b[campo].trim().toLowerCase())
+
+/**
+ * Añade una dirección a la cuenta, salvo que ya tenga esa misma. Nunca es la
+ * predeterminada: esa se cambia en el perfil. Devuelve true si la creó.
+ */
+async function saveAddress(accessToken, userId, direccion) {
+  const client = userClient(accessToken)
+
+  const { data: candidatas, error: lecturaError } = await client
+    .from('direcciones')
+    .select('colonia, calle, numero')
+    .eq('usuario_id', userId)
+    .eq('estado_id', direccion.estadoId)
+    .eq('codigo_postal', direccion.codigoPostal)
+
+  if (lecturaError) throw lecturaError
+  if (candidatas.some((candidata) => mismaDireccion(candidata, direccion))) return false
+
+  const { error } = await client.from('direcciones').insert({
+    usuario_id: userId,
+    estado_id: direccion.estadoId,
+    codigo_postal: direccion.codigoPostal,
+    colonia: direccion.colonia,
+    calle: direccion.calle,
+    numero: direccion.numero,
+    predeterminada: false,
+  })
+
+  if (error) throw error
+
+  return true
+}
+
+module.exports = { findProfile, updateProfile, listAddresses, saveAddress, toPublicUser, normalizeEmail }

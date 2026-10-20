@@ -4,7 +4,7 @@ const requireAdmin = require('../middleware/requireAdmin')
 const requireAuth = require('../middleware/requireAuth')
 const validate = require('../middleware/validate')
 const validateImage = require('../middleware/validateImage')
-const { brandSchema, categorySchema, productSchema } = require('../validation/admin.schema')
+const { brandSchema, categorySchema, orderStateSchema, productSchema } = require('../validation/admin.schema')
 
 // Declaración pura, como auth.routes.
 //
@@ -28,6 +28,11 @@ router.use(requireAuth, requireAdmin)
 
 router.get('/summary', controller.summary)
 router.get('/catalogos', controller.catalogos)
+
+// Los pedidos pagados de la tienda: la lista, uno por folio y su cambio de estado.
+router.get('/orders', controller.orders)
+router.get('/orders/:folio', controller.order)
+router.put('/orders/:folio/estado', validate(orderStateSchema), controller.setOrderState)
 
 // Las categorías: la lista es la del menú lateral, que la sección Categorías
 // también usa.
