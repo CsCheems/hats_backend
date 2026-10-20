@@ -50,7 +50,7 @@ router.put('/products/:id', validate(productSchema), controller.updateProduct)
 router.delete('/products/:id', controller.archiveProduct)
 router.post('/products/:id/restaurar', controller.restoreProduct)
 
-// El cuerpo de la subida es la imagen cruda: validateImage lee hasta 5 MB y
+// El cuerpo de la subida es la imagen cruda: validateImage lee hasta 10 MB y
 // comprueba tipo y firma antes de que el controlador la vea.
 router.post('/products/:id/imagenes', ...validateImage, controller.uploadImage)
 router.put('/products/:id/imagenes/:imagenId/principal', controller.makePrincipal)

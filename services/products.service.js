@@ -1,4 +1,6 @@
+const ApiError = require('../utils/ApiError')
 const catalog = require('./catalog.store')
+const shop = require('./shop.store')
 
 // El escaparate público. Igual que admin.service: no conoce req ni res, no elige
 // status a mano y se podría llamar mañana desde un script.
@@ -23,4 +25,15 @@ async function catalogo() {
   return { items, facetas, total: items.length }
 }
 
-module.exports = { catalogo }
+// Un solo artículo, con la galería completa. Es lo que la ficha necesita y la
+// lista no trae. Un artículo sin publicar, archivado o inexistente da el mismo
+// 404: la tienda no confirma que un borrador exista.
+async function detalle(slug) {
+  const producto = await shop.productDetail(slug)
+
+  if (!producto) throw ApiError.notFound()
+
+  return producto
+}
+
+module.exports = { catalogo, detalle }

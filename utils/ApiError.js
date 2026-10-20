@@ -88,6 +88,18 @@ class ApiError extends Error {
     return new ApiError({ status: 415, code: 'unsupported_media_type', message, field: 'imagen' })
   }
 
+  // Un archivo que pasa del peso máximo. 413 con `field` para que el panel lo
+  // ponga junto a la galería; el 413 genérico del manejador no lo lleva.
+  static payloadTooLarge(message) {
+    return new ApiError({ status: 413, code: 'payload_too_large', message, field: 'imagen' })
+  }
+
+  // Añadir a la bolsa algo sin existencias. 409: la petición está bien escrita,
+  // el estado del artículo es lo que no la deja pasar.
+  static outOfStock() {
+    return new ApiError({ status: 409, code: 'out_of_stock', message: 'Este artículo está agotado.' })
+  }
+
   // Borrar algo que todavía se usa: una marca o una categoría con artículos. 409
   // y no 400, porque no hay nada mal escrito; sin `field` por lo mismo. El
   // mensaje dice qué lo está usando.

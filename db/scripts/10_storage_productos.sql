@@ -15,7 +15,7 @@
 begin;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('productos', 'productos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+values ('productos', 'productos', true, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update
   set public             = excluded.public,
       file_size_limit    = excluded.file_size_limit,

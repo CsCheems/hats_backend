@@ -1,8 +1,11 @@
 const { Router } = require('express')
 const adminRoutes = require('./admin.routes')
 const authRoutes = require('./auth.routes')
+const carritoRoutes = require('./carrito.routes')
+const favoritosRoutes = require('./favoritos.routes')
 const marcasRoutes = require('./marcas.routes')
 const productsRoutes = require('./products.routes')
+const resenasRoutes = require('./resenas.routes')
 const ubicacionesRoutes = require('./ubicaciones.routes')
 
 // Índice de la API.
@@ -48,5 +51,13 @@ router.use('/ubicaciones', ubicacionesRoutes)
 
 // Las marcas del menú de la tienda y de la portada. Sin sesión, por lo mismo.
 router.use('/marcas', marcasRoutes)
+
+// Lo que es de cada persona: sus favoritos, su bolsa y las reseñas que escribe.
+// Cada router lleva requireAuth entero, igual que /admin lleva el suyo, y las
+// funciones de la base leen auth.uid() del JWT: nadie ve ni toca lo de otro
+// aunque el servidor se equivocara.
+router.use('/favoritos', favoritosRoutes)
+router.use('/carrito', carritoRoutes)
+router.use('/resenas', resenasRoutes)
 
 module.exports = router

@@ -13,7 +13,9 @@ const productSchema = {
     { name: 'titulo', format: 'titulo' },
     { name: 'descripcion', format: 'descripcion' },
     { name: 'categoria' },
-    { name: 'marca' },
+    // Opcional: la tienda es de una sola marca y el formulario ya no la pide.
+    // Si no llega, admin.service usa la única que hay; si llega, se valida igual.
+    { name: 'marca', optional: true },
     // Opcionales aquí porque dependen de la categoría: el servicio exige el
     // género donde hace falta y rechaza los dos donde sobran.
     { name: 'genero', optional: true },

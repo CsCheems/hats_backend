@@ -536,4 +536,8 @@ module.exports = {
   deleteCategory,
   publicCatalog,
   publicBrands,
+  // Para shop.store: el detalle, los favoritos y la bolsa se arman con la misma
+  // lista blanca y la misma URL pública que el catálogo.
+  toPublicProduct,
+  fotoUrl,
 }

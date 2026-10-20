@@ -151,11 +151,18 @@ async function checkProduct(values) {
   const categoria = categorias.find((entrada) => entrada.id === values.categoria)
   if (!categoria) throw ApiError.invalidField('categoria', MESSAGES.categoria)
 
-  if (!marcas.some((marca) => marca.id === values.marca)) {
-    throw ApiError.invalidField('marca', MESSAGES.marca)
+  // La tienda es de una sola marca y el formulario no la pide: sin marca en el
+  // cuerpo se usa la única que hay. Con varias, sí hay que decirla. Un fallo de
+  // marca sin campo de marca en pantalla se coloca bajo la categoría.
+  const sinCampo = !values.marca
+  const marca = values.marca ?? (marcas.length === 1 ? marcas[0].id : null)
+  const campoMarca = sinCampo ? 'categoria' : 'marca'
+
+  if (!marcas.some((entrada) => entrada.id === marca)) {
+    throw ApiError.invalidField(campoMarca, sinCampo ? MESSAGES.categoriaSinMarca : MESSAGES.marca)
   }
-  if (!categoria.marcas.includes(values.marca)) {
-    throw ApiError.invalidField('marca', MESSAGES.marcaCategoria)
+  if (!categoria.marcas.includes(marca)) {
+    throw ApiError.invalidField(campoMarca, sinCampo ? MESSAGES.categoriaSinMarca : MESSAGES.marcaCategoria)
   }
 
   if (categoria.llevaGenero && !values.genero) {
@@ -181,7 +188,7 @@ async function checkProduct(values) {
     titulo: values.titulo,
     descripcion: values.descripcion,
     categoria: values.categoria,
-    marca: values.marca,
+    marca,
     genero: values.genero,
     fieltro: values.fieltro,
     precio: Number(values.precio),

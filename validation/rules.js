@@ -47,6 +47,10 @@ const MESSAGES = {
   categoria: 'Elige una categoría de la lista',
   marca: 'Elige una marca de la lista',
   marcaCategoria: 'Esta marca no trabaja esa categoría',
+  // Sin campo de marca en el formulario, el fallo de «la marca de la tienda no
+  // trabaja esta categoría» se dice bajo la categoría, que es lo que se puede
+  // cambiar; la salida está en Marcas.
+  categoriaSinMarca: 'Esta categoría no está asignada a la marca de la tienda. Asígnala en Marcas',
   generoFalta: 'Esta categoría necesita género',
   genero: 'Elige un género de la lista',
   generoSobra: 'Esta categoría no lleva género',
@@ -57,7 +61,20 @@ const MESSAGES = {
   // texto renombrado a .png trae la cabecera correcta y los bytes no.
   imagenTipo: 'La imagen tiene que ser JPG, PNG o WebP',
   imagenFirma: 'El archivo no es una imagen JPG, PNG o WebP válida',
+  imagenPeso: 'La imagen pesa más de 10 MB',
+  // Los topes de medidas viven en middleware/validateImage.js; el mensaje los
+  // repite porque es lo que la persona tiene que corregir.
+  imagenMuyChica: 'La imagen es muy pequeña: tiene que medir al menos 800 × 800 píxeles',
+  imagenMuyGrande: 'La imagen es demasiado grande: no puede pasar de 5000 × 5000 píxeles',
   galeriaLlena: 'Este artículo ya tiene 8 imágenes. Quita una para subir otra',
+
+  // Bolsa y reseñas de la tienda. Tienen copia literal en `shopMessages` de
+  // frontend/src/data/shop.js. El tope de 10 es el de max_cantidad() en la base
+  // (db/scripts/14); el servidor lo recorta además al stock.
+  cantidad: 'Elige entre 1 y 10 piezas',
+  cantidadFijar: 'Elige entre 0 y 10 piezas',
+  calificacion: 'Elige de 1 a 5 estrellas',
+  resenaLarga: 'La reseña admite hasta 1000 caracteres',
 
   // Marcas y categorías del panel. Los tres de formato tienen copia literal en
   // `catalogMessages` de frontend/src/data/admin.js; el resto depende de lo que
@@ -88,6 +105,13 @@ const MAX_DESCRIPCION = 600
 const PRECIO = /^\d{1,8}(\.\d{1,2})?$/
 const STOCK = /^\d{1,6}$/
 
+// Bolsa y reseñas. El tope de piezas por artículo es el de max_cantidad() en
+// db/scripts/14; si allí cambia, cambia aquí y en MESSAGES.
+const MAX_CANTIDAD = 10
+const CANTIDAD = /^\d{1,2}$/
+const CALIFICACION = /^[1-5]$/
+const MAX_RESENA = 1000
+
 // Marcas y categorías: el tope de nombre y el formato del prefijo son los check
 // de db/scripts/06 y 11. El prefijo admite minúsculas aquí; el servicio lo pasa
 // a mayúsculas antes de escribirlo.
@@ -116,6 +140,11 @@ const FORMAT = {
   // «0», «0.00» y «-5» no son precios; «4290» y «1234.5» sí.
   precio: (value) => (PRECIO.test(value) && Number(value) > 0 ? null : MESSAGES.precio),
   stock: (value) => (STOCK.test(value) ? null : MESSAGES.stock),
+  // Sumar a la bolsa pide al menos una pieza; fijar admite 0, que la quita.
+  cantidad: (value) => (CANTIDAD.test(value) && Number(value) >= 1 && Number(value) <= MAX_CANTIDAD ? null : MESSAGES.cantidad),
+  cantidadFijar: (value) => (CANTIDAD.test(value) && Number(value) <= MAX_CANTIDAD ? null : MESSAGES.cantidadFijar),
+  calificacion: (value) => (CALIFICACION.test(value) ? null : MESSAGES.calificacion),
+  resena: (value) => (value.length <= MAX_RESENA ? null : MESSAGES.resenaLarga),
   nombreCatalogo: (value) => (value.length <= MAX_NOMBRE_CATALOGO ? null : MESSAGES.nombreLargo),
   prefijo: (value) => (PREFIJO.test(value) ? null : MESSAGES.prefijo),
   // La única que no recibe un texto: recibe la lista ya limpia de un campo
